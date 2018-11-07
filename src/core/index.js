@@ -7,7 +7,7 @@ import { parseSearch } from "./utils"
 import win from "./window"
 
 if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-  win.Perf = require("react-dom/lib/ReactPerf")
+  win.Perf = {}s
 }
 
 // eslint-disable-next-line no-undef
@@ -21,7 +21,7 @@ export default function SwaggerUI(opts) {
     gitRevision: GIT_COMMIT,
     gitDirty: GIT_DIRTY,
     buildTimestamp: BUILD_TIME,
-    machine: HOSTNAME
+    machine: HOSTNAMEs
   }
 
   const defaults = {

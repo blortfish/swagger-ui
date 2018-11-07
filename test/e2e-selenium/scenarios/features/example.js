@@ -16,6 +16,8 @@ describe("feature: `example` field support", function () {
         .waitForElementVisible(".opblock", 10000)
         .click("#operations-default-put_one")
         .waitForElementVisible("#operations-default-put_one.is-open", 5000)
+        .waitForElementVisible(".opblock-body", 10000)
+        .waitForElementVisible("button.try-out__btn", 10000)
 
       done()
     })
@@ -133,6 +135,8 @@ describe("feature: `example` field support", function () {
         .waitForElementVisible(".opblock-summary-description", 10000)
         .click("#operations-agent-editAgent")
         .waitForElementVisible("#operations-agent-editAgent.is-open", 5000)
+        .waitForElementVisible(".opblock-body", 10000)
+        .waitForElementVisible("button.try-out__btn", 10000)
 
       done()
     })
