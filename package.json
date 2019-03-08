@@ -1,6 +1,6 @@
 {
   "name": "dflint--swagger-ui",
-  "version": "3.20.2",
+  "version": "3.20.3",
   "main": "dist/swagger-ui.js",
   "homepage": "https://github.com/swagger-api/swagger-ui",
   "repository": "git@github.com:swagger-api/swagger-ui.git",

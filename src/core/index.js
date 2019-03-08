@@ -7,7 +7,7 @@ import { parseSearch } from "./utils"
 import win from "./window"
 
 if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
-  win.Perf = {}s
+  win.Perf = {}
 }
 
 // eslint-disable-next-line no-undef
