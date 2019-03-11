@@ -21,7 +21,7 @@ export default function SwaggerUI(opts) {
     gitRevision: GIT_COMMIT,
     gitDirty: GIT_DIRTY,
     buildTimestamp: BUILD_TIME,
-    machine: HOSTNAMEs
+    machine: HOSTNAME
   }
 
   const defaults = {
