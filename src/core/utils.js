@@ -1,4 +1,4 @@
-/* 
+/*
   ATTENTION! This file (but not the functions within) is deprecated.
 
   You should probably add a new file to `./helpers/` instead of adding a new
@@ -24,7 +24,8 @@ import cssEscape from "css.escape"
 import getParameterSchema from "../helpers/get-parameter-schema"
 import randomBytes from "randombytes"
 import shaJs from "sha.js"
-
+import url from "url"
+import getIn from "lodash/get"
 
 const DEFAULT_RESPONSE_KEY = "default"
 
@@ -365,13 +366,13 @@ export function extractFileNameFromContentDispositionHeader(value){
     /filename="([^;]*);?"/i,
     /filename=([^;]*);?/i
   ]
-  
+
   let responseFilename
   patterns.some(regex => {
     responseFilename = regex.exec(value)
     return responseFilename !== null
   })
-    
+
   if (responseFilename !== null && responseFilename.length > 1) {
     try {
       return decodeURIComponent(responseFilename[1])
@@ -501,7 +502,7 @@ export const validatePattern = (val, rxPattern) => {
 
 // validation of parameters before execute
 export const validateParam = (param, value, { isOAS3 = false, bypassRequiredCheck = false } = {}) => {
-  
+
   let errors = []
 
   let paramRequired = param.get("required")
@@ -538,7 +539,7 @@ export const validateParam = (param, value, { isOAS3 = false, bypassRequiredChec
     let objectStringCheck = type === "object" && typeof value === "string" && value
 
     const allChecks = [
-      stringCheck, arrayCheck, arrayListCheck, arrayStringCheck, fileCheck, 
+      stringCheck, arrayCheck, arrayListCheck, arrayStringCheck, fileCheck,
       booleanCheck, numberCheck, integerCheck, objectCheck, objectStringCheck,
     ]
 
@@ -834,7 +835,7 @@ export function paramToIdentifier(param, { returnAll = false, allowHashes = true
   }
   const paramName = param.get("name")
   const paramIn = param.get("in")
-  
+
   let generatedIdentifiers = []
 
   // Generate identifiers in order of most to least specificity
@@ -842,7 +843,7 @@ export function paramToIdentifier(param, { returnAll = false, allowHashes = true
   if (param && param.hashCode && paramIn && paramName && allowHashes) {
     generatedIdentifiers.push(`${paramIn}.${paramName}.hash-${param.hashCode()}`)
   }
-  
+
   if(paramIn && paramName) {
     generatedIdentifiers.push(`${paramIn}.${paramName}`)
   }
@@ -888,4 +889,109 @@ function b64toB64UrlEncoded(str) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=/g, "")
+}
+
+const stripNonAlpha = str => (str ? str.replace(/\W/g, "") : null)
+
+const buildOas3UrlWithContext = (ourUrl = "", contextUrl = "") => {
+  const parsedUrl = url.parse(ourUrl)
+  const parsedContextUrl = url.parse(contextUrl)
+
+  const computedScheme = stripNonAlpha(parsedUrl.protocol) || stripNonAlpha(parsedContextUrl.protocol) || ""
+  const computedHost = parsedUrl.host || parsedContextUrl.host
+  const computedPath = parsedUrl.pathname || ""
+  let res
+
+  if (computedScheme && computedHost) {
+    res = `${computedScheme}://${computedHost + computedPath}`
+
+    // If last character is '/', trim it off
+  }
+  else {
+    res = computedPath
+  }
+
+  return res[res.length - 1] === "/" ? res.slice(0, -1) : res
+}
+
+function getVariableTemplateNames(str) {
+  const results = []
+  const re = /{([^}]+)}/g
+  let text
+
+  // eslint-disable-next-line no-cond-assign
+  while (text = re.exec(str)) {
+    results.push(text[1])
+  }
+  return results
+}
+
+const oas3BaseUrl = ({ spec, pathName, method, server, contextUrl, serverVariables = {} }) => {
+  const servers =
+    getIn(spec, ["paths", pathName, (method || "").toLowerCase(), "servers"]) ||
+    getIn(spec, ["paths", pathName, "servers"]) ||
+    getIn(spec, ["servers"])
+
+  let selectedServerUrl = ""
+  let selectedServerObj = null
+
+  if (server && servers && servers.length) {
+    const serverUrls = servers.map(srv => srv.url)
+
+    if (serverUrls.indexOf(server) > -1) {
+      selectedServerUrl = server
+      selectedServerObj = servers[serverUrls.indexOf(server)]
+    }
+  }
+
+  if (!selectedServerUrl && servers && servers.length) {
+    // default to the first server if we don't have one by now
+    selectedServerUrl = servers[0].url
+    selectedServerObj = servers[0]
+  }
+
+  if (selectedServerUrl.indexOf("{") > -1) {
+    // do variable substitution
+    const varNames = getVariableTemplateNames(selectedServerUrl)
+    varNames.forEach((vari) => {
+      if (selectedServerObj.variables && selectedServerObj.variables[vari]) {
+        // variable is defined in server
+        const variableDefinition = selectedServerObj.variables[vari]
+        const variableValue = serverVariables[vari] || variableDefinition.default
+
+        const re = new RegExp(`{${vari}}`, "g")
+        selectedServerUrl = selectedServerUrl.replace(re, variableValue)
+      }
+    })
+  }
+
+  //return selectedServerUrl
+  return buildOas3UrlWithContext(selectedServerUrl, contextUrl)
+}
+
+const swagger2BaseUrl = ({ spec, scheme, contextUrl = "" }) => {
+  const parsedContextUrl = url.parse(contextUrl)
+  const firstSchemeInSpec = Array.isArray(spec.schemes) ? spec.schemes[0] : null
+
+  const computedScheme = scheme || firstSchemeInSpec || stripNonAlpha(parsedContextUrl.protocol) || "http"
+  const computedHost = spec.host || parsedContextUrl.host || ""
+  const computedPath = spec.basePath || ""
+  let res
+
+  if (computedScheme && computedHost) {
+    // we have what we need for an absolute URL
+    res = `${computedScheme}://${computedHost + computedPath}`
+  }
+  else {
+    // if not, a relative URL will have to do
+    res = computedPath
+  }
+
+  // If last character is '/', trim it off
+  return res[res.length - 1] === "/" ? res.slice(0, -1) : res
+}
+
+export const baseUrl = (obj) => {
+  const baseUrl = obj.specIsOAS3 ? oas3BaseUrl(obj) : swagger2BaseUrl(obj)
+  return (`${baseUrl}${obj.pathName}`)
 }

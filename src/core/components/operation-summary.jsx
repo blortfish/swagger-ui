@@ -3,6 +3,7 @@ import PropTypes from "prop-types"
 import { Iterable, List } from "immutable"
 import ImPropTypes from "react-immutable-proptypes"
 import toString from "lodash/toString"
+import CopyComponent from "./copy-component"
 
 
 export default class OperationSummary extends PureComponent {
@@ -15,6 +16,7 @@ export default class OperationSummary extends PureComponent {
     getConfigs: PropTypes.func.isRequired,
     authActions: PropTypes.object,
     authSelectors: PropTypes.object,
+    getBaseUrl: PropTypes.func.isRequired
   }
 
   static defaultProps = {
@@ -32,6 +34,7 @@ export default class OperationSummary extends PureComponent {
       authSelectors,
       operationProps,
       specPath,
+      getBaseUrl
     } = this.props
 
     let {
@@ -43,6 +46,7 @@ export default class OperationSummary extends PureComponent {
       operationId,
       originalOperationId,
       displayOperationId,
+      path
     } = operationProps.toJS()
 
     let {
@@ -80,9 +84,10 @@ export default class OperationSummary extends PureComponent {
               }}
             />
         }
+        <CopyComponent getBaseUrl={getBaseUrl} path={path} method={method}/>
         <JumpToPath path={specPath} />{/* TODO: use wrapComponents here, swagger-ui doesn't care about jumpToPath */}
       </div>
     )
 
-  }
+  } 
 }
