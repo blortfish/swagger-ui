@@ -9,6 +9,8 @@ import eq from "lodash/eq"
 import { memoizedSampleFromSchema, memoizedCreateXMLExample } from "core/plugins/samples/fn"
 import win from "./window"
 import cssEscape from "css.escape"
+import url from "url"
+import getIn from "lodash/get"
 
 const DEFAULT_RESPONSE_KEY = "default"
 
@@ -842,4 +844,109 @@ export function paramToValue(param, paramValues) {
     .filter(value => value !== undefined)
 
   return values[0]
+}
+
+const stripNonAlpha = str => (str ? str.replace(/\W/g, "") : null)
+
+const buildOas3UrlWithContext = (ourUrl = "", contextUrl = "") => {
+  const parsedUrl = url.parse(ourUrl)
+  const parsedContextUrl = url.parse(contextUrl)
+
+  const computedScheme = stripNonAlpha(parsedUrl.protocol) || stripNonAlpha(parsedContextUrl.protocol) || ""
+  const computedHost = parsedUrl.host || parsedContextUrl.host
+  const computedPath = parsedUrl.pathname || ""
+  let res
+
+  if (computedScheme && computedHost) {
+    res = `${computedScheme}://${computedHost + computedPath}`
+
+    // If last character is '/', trim it off
+  }
+  else {
+    res = computedPath
+  }
+
+  return res[res.length - 1] === "/" ? res.slice(0, -1) : res
+}
+
+function getVariableTemplateNames(str) {
+  const results = []
+  const re = /{([^}]+)}/g
+  let text
+
+  // eslint-disable-next-line no-cond-assign
+  while (text = re.exec(str)) {
+    results.push(text[1])
+  }
+  return results
+}
+
+const oas3BaseUrl = ({ spec, pathName, method, server, contextUrl, serverVariables = {} }) => {
+  const servers =
+    getIn(spec, ["paths", pathName, (method || "").toLowerCase(), "servers"]) ||
+    getIn(spec, ["paths", pathName, "servers"]) ||
+    getIn(spec, ["servers"])
+
+  let selectedServerUrl = ""
+  let selectedServerObj = null
+
+  if (server && servers && servers.length) {
+    const serverUrls = servers.map(srv => srv.url)
+
+    if (serverUrls.indexOf(server) > -1) {
+      selectedServerUrl = server
+      selectedServerObj = servers[serverUrls.indexOf(server)]
+    }
+  }
+
+  if (!selectedServerUrl && servers && servers.length) {
+    // default to the first server if we don't have one by now
+    selectedServerUrl = servers[0].url
+    selectedServerObj = servers[0]
+  }
+
+  if (selectedServerUrl.indexOf("{") > -1) {
+    // do variable substitution
+    const varNames = getVariableTemplateNames(selectedServerUrl)
+    varNames.forEach((vari) => {
+      if (selectedServerObj.variables && selectedServerObj.variables[vari]) {
+        // variable is defined in server
+        const variableDefinition = selectedServerObj.variables[vari]
+        const variableValue = serverVariables[vari] || variableDefinition.default
+
+        const re = new RegExp(`{${vari}}`, "g")
+        selectedServerUrl = selectedServerUrl.replace(re, variableValue)
+      }
+    })
+  }
+
+  //return selectedServerUrl
+  return buildOas3UrlWithContext(selectedServerUrl, contextUrl)
+}
+
+const swagger2BaseUrl = ({ spec, scheme, contextUrl = "" }) => {
+  const parsedContextUrl = url.parse(contextUrl)
+  const firstSchemeInSpec = Array.isArray(spec.schemes) ? spec.schemes[0] : null
+
+  const computedScheme = scheme || firstSchemeInSpec || stripNonAlpha(parsedContextUrl.protocol) || "http"
+  const computedHost = spec.host || parsedContextUrl.host || ""
+  const computedPath = spec.basePath || ""
+  let res
+
+  if (computedScheme && computedHost) {
+    // we have what we need for an absolute URL
+    res = `${computedScheme}://${computedHost + computedPath}`
+  }
+  else {
+    // if not, a relative URL will have to do
+    res = computedPath
+  }
+
+  // If last character is '/', trim it off
+  return res[res.length - 1] === "/" ? res.slice(0, -1) : res
+}
+
+export const baseUrl = (obj) => {
+  const baseUrl = obj.specIsOAS3 ? oas3BaseUrl(obj) : swagger2BaseUrl(obj)
+  return (`${baseUrl}${obj.pathName}`)
 }
