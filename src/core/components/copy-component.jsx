@@ -14,15 +14,11 @@ function copyToClipboard(e, getBaseUrl, path, method) {
 const CopyComponent = ({ getBaseUrl, path, method }) => {
 
   return (
-    <div>
-      {
         <div onClick={e => copyToClipboard(e, getBaseUrl, path, method)}>
           <svg width="20" height="17">
             <use xlinkHref={"#copy-to-clipboard"} />
           </svg>
         </div>
-      }
-    </div>
   )
 }
 
@@ -33,4 +29,3 @@ CopyComponent.propTypes = {
   }
 
   export default CopyComponent
-  
