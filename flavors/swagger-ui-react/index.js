@@ -11,11 +11,14 @@ export default class SwaggerUI extends React.Component {
   
   componentDidMount() {
     const ui = swaggerUIConstructor({
+      plugins: this.props.plugins,
       spec: this.props.spec,
       url: this.props.url,
       requestInterceptor: this.requestInterceptor,
       responseInterceptor: this.responseInterceptor,
       onComplete: this.onComplete,
+      docExpansion: this.props.docExpansion,
+      defaultModelExpandDepth: this.props.defaultModelExpandDepth,
     })
 
     this.system = ui
@@ -66,7 +69,7 @@ export default class SwaggerUI extends React.Component {
 
   onComplete = () => {
     if (typeof this.props.onComplete === "function") {
-      return this.props.onComplete()
+      return this.props.onComplete(this.system)
     }
   }
 }
@@ -80,4 +83,7 @@ SwaggerUI.propTypes = {
   requestInterceptor: PropTypes.func,
   responseInterceptor: PropTypes.func,
   onComplete: PropTypes.func,
+  docExpansion: PropTypes.oneOf(['list', 'full', 'none']),
+  defaultModelExpandDepth: PropTypes.number,
+  plugins: PropTypes.arrayOf(PropTypes.object),
 }

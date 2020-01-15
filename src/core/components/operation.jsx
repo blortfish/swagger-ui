@@ -170,6 +170,8 @@ export default class Operation extends PureComponent {
                   specSelectors={ specSelectors }
                   pathMethod={ [path, method] }
                   getConfigs={ getConfigs }
+                  oas3Actions={ oas3Actions }
+                  oas3Selectors={ oas3Selectors }
                 />
               }
 
@@ -228,6 +230,7 @@ export default class Operation extends PureComponent {
                     getConfigs={ getConfigs }
                     specSelectors={ specSelectors }
                     oas3Actions={oas3Actions}
+                    oas3Selectors={oas3Selectors}
                     specActions={ specActions }
                     produces={specSelectors.producesOptionsFor([path, method]) }
                     producesValue={ specSelectors.currentProducesFor([path, method]) }
